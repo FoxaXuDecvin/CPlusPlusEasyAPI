@@ -8,49 +8,67 @@ using namespace std;
 //7z Core
 // selectoption = Select ZIP Pack
 
-string n7zNewZIP(string n7zcorex, string selectoption, string outfile, string password) {
+void ECMD(string ncmd) {
+	string cmd = "\"" + ncmd + "\" 1>nul >nul";
+	//cout << cmd << endl;
+	system(cmd.c_str());
+	return;
+}
+
+void n7zNewZIP(string n7zcorex, string selectoption, string outfile, string password) {
 	string SERunFile = "\"" + n7zcorex + "\"";
 	string SEExtraFile = "\"" + selectoption + "\"";
 	string SEOutPath = "\"" + outfile + "\"";
 	if (_access(n7zcorex.c_str(), 00)){
 		string xinfo = "7-Zip-API错误，请求的函数 n7zcorex 不应该为" + n7zcorex + "，无法调用对应程序";
 		MessageBox(0, xinfo.c_str(), "7zipAPI Error", MB_OK);
-		return n7zcorex;
+		Sleep(200);
+		return;
 	}
 	if (password == "0") {
 		string n7zParameter = "a " + SEOutPath + " " + SEExtraFile + " ";
-		ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		//ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		ECMD(SERunFile + " " + n7zParameter);
 		string INFOS = "succeed";
-		return INFOS;
+		Sleep(200);
+		return;
 	}
 	else {
 		string n7zParameter = "a " + SEOutPath + " " + SEExtraFile + " -p" + password;
-		ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		//ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		ECMD(SERunFile + " " + n7zParameter);
 		string INFOS = "succeed";
-		return INFOS;
+		Sleep(200);
+		return;
 	}
 }
 
-string n7zUNZIP(string n7zcorex, string selectoption, string outpath, string password) {
+void n7zUNZIP(string n7zcorex, string selectoption, string outpath, string password) {
 	string SERunFile = "\"" + n7zcorex + "\"";
 	string SEExtraFile = "\"" + selectoption + "\"";
 	string SEOutPath = "\"" + outpath + "\"";
 	if (_access(n7zcorex.c_str(), 00)) {
 		string xinfo = "7-Zip-API错误，请求的函数 n7zcorex 不应该为" + n7zcorex + "，无法调用对应程序";
 		MessageBox(0, xinfo.c_str(), "7zipAPI Error", MB_OK);
-		return n7zcorex;
+		Sleep(200);
+		return;
 	}
 	if (password == "0") {
 		string n7zParameter = "x -o" + SEOutPath + " " + SEExtraFile + " ";
-		ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		//ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		//cout << SERunFile + " " + n7zParameter << endl;
+		ECMD(SERunFile + " " + n7zParameter);
 		string INFOS = "succeed";
-		return INFOS;
+		Sleep(200);
+		return;
 	}
 	else {
 		string n7zParameter = "x -o" + SEOutPath + " " + SEExtraFile + " -p" + password;
-		ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		//ShellExecute(0, "open", SERunFile.c_str(), n7zParameter.c_str(), 0, SW_HIDE);
+		ECMD(SERunFile + " " + n7zParameter);
 		string INFOS = "succeed";
-		return INFOS;
+		Sleep(200);
+		return;
 	}
 }
 
@@ -60,6 +78,7 @@ string n7zGetSHA256(string n7zcorex, string file) {
 	if (_access(n7zcorex.c_str(), 00)) {
 		string xinfo = "7-Zip-API错误，请求的函数 n7zcorex 不应该为" + n7zcorex + "，无法调用对应程序";
 		MessageBox(0, xinfo.c_str(), "7zipAPI Error", MB_OK);
+		Sleep(200);
 		return n7zcorex;
 	}
 	bool ret7zrfile = existfile("report~7z.txt");
@@ -87,6 +106,7 @@ BackWaitCalcSHA:
 		CleanLong.open("temp~cleankey");
 		CleanLong << SHACode << endl;
 		CleanLong.close();
+		Sleep(200);
 
 		string RealReturn;
 		ifstream ReadShort;

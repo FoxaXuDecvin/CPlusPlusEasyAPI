@@ -1,6 +1,7 @@
 // Windows API Loader
 // Copyright FoxaXu
 // Add _CRT_SECURE_NO_WARNINGS in Setting
+#pragma once
 
 //这是我这些年翻各种论坛制作的各种API与功能模块
 //直接调用对应模块，不用单独添加头文件
@@ -18,13 +19,25 @@
 #include<tchar.h>
 #include<vector>
 #include<random>
+#include<stdio.h>
+#include<xstring>
+#include<cstring>
+#include<vector>
+#include<tchar.h>
+#include<direct.h>
+#include <shellapi.h>
+#include <urlmon.h>
+
 #pragma comment(lib,"URlmon.lib")
 
 #undef UNICODE
 #undef _UNICODE
+#define BUFSIZE 4096
 using std::cout; using std::cin;
 using std::endl; using std::string;
 using namespace std;
+
+int charlong;
 
 //读取文本文档API
 string ReadTextA(string filename, int line)
@@ -112,6 +125,14 @@ bool existfolder(string name) {
 	return retb;
 }
 
+bool existfolderA(string name,string markfile) {
+	string A = name + "\\" + markfile;
+
+	bool retb = existcheck(A);
+
+	return retb;
+}
+
 //URL网络文件下载 UrlMon扩展
 bool URLDown(string URL, string SavePath) {
 	bool retDLA = existcheck(SavePath);
@@ -134,14 +155,14 @@ bool URLDown(string URL, string SavePath) {
 
 //INI格式文件读取写入
 string readengine(string file, string head, string title) {
-	LPTSTR lpPath = new char[MAX_PATH];
+	LPTSTR lpPath = new char[65535];
 
 	strcpy(lpPath, file.c_str());
-	LPTSTR ReadPointWM = new char[99];
+	LPTSTR ReadPointWM = new char[65535];
 
 	bool existf = existcheck(file);
 	if (existf) {
-		GetPrivateProfileString(head.c_str(), title.c_str(), NULL, ReadPointWM, 99, lpPath);
+		GetPrivateProfileString(head.c_str(), title.c_str(), NULL, ReadPointWM, 65535, lpPath);
 		return ReadPointWM;
 	}
 	else
@@ -204,7 +225,7 @@ string cmdshelladmin(string command, string runpath, string taskcode) {
 //获取当前程序PID号码
 int getpid() {
 	errno_t	err = 0;
-	char	fileName[100] = { 0 };
+	char	fileName[65535] = { 0 };
 	char    ProcessFullName[_MAX_PATH] = { 0 };
 	char    ProcessName[0x40] = { 0 };
 	DWORD   ProcessPID = 0;
@@ -221,7 +242,7 @@ int getpid() {
 }
 
 //文件夹操作 rm 删除 md 创建 clear 清理
-string rmfolder(string foldername) {
+string oldrmfolder(string foldername) {
 	int PID = getpid();
 
 	string PIDS = to_string(PID);
@@ -238,31 +259,77 @@ string rmfolder(string foldername) {
 	ShellExecute(0, "open", filename.c_str(), 0, 0, SW_HIDE);
 	return filename;
 }
+ 
+//清理指定文件夹下所有文件 包括文件目录本身
+//[in] const wstring wstDirectory : 要清理的文件目录
+//返回值 : 无
+void rmfolderAPI(string dir) {
+	string newDir = dir + "\\*.*";
+	intptr_t handle;
+	struct _finddata_t fileinfo;
 
-string mdfolder(string foldername) {
-	string name = foldername;
-	CreateDirectory(foldername.c_str(), 0);
-	return name;
+	handle = _findfirst(newDir.c_str(), &fileinfo);
+	if (handle == -1) {
+		//cout << "无文件" << endl;
+		system("pause");
+		return;
+	}
+
+	do {
+		if (fileinfo.attrib & _A_SUBDIR) {
+			if (strcmp(fileinfo.name, ".") == 0 || strcmp(fileinfo.name, "..") == 0)
+				continue;
+			newDir = dir + "\\" + fileinfo.name;
+			rmfolderAPI(newDir.c_str());
+			//cout << newDir.c_str() << endl;
+			if (_rmdir(newDir.c_str()) == 0) {
+				//cout << "delete empty dir success" << endl;
+				RemoveDirectory(newDir.c_str());
+			}
+			else {
+				//cout << "delete empty dir error" << endl;
+			}
+		}
+		else {
+			string file_path = dir + "\\" + fileinfo.name;
+			//cout << file_path.c_str() << endl;
+			if (remove(file_path.c_str()) == 0) {
+				//cout << "delete file success" << endl;
+			}
+			else {
+				//cout << "delete file error" << endl;
+			}
+		}
+	} while (!_findnext(handle, &fileinfo));
+
+	_findclose(handle);
 }
 
-string clearfolder(string foldername) {
+//文件夹操作 rm 删除 md 创建 clear 清理
+void rmfolder(string folderpath) {
+	rmfolderAPI(folderpath);
+	RemoveDirectory(folderpath.c_str());
+	return;
+}
 
-	int PID = getpid();
+void rmfolderOLD(string foldername) {
+	string cmde = "rd /s /q \"" + foldername + "\"";
+	system(cmde.c_str());
+	return;
+}
 
-	string PIDS = to_string(PID);
+//文件夹操作 rm 删除 md 创建 clear 清理
+void mdfolder(string foldername) {
+	CreateDirectory(foldername.c_str(), 0);
+	return;
+}
 
-	ofstream RMTask;
-	string filename = "$task~rmfolder~" + PIDS + ".bat";
-	RMTask.open(filename);
-	RMTask << "@echo off" << endl;
-	RMTask << "rd /s /q \"" + foldername + "\"" << endl;
-	RMTask << "md \"" + foldername + "\"" << endl;
-	RMTask << "del " + filename << endl;
-	RMTask << "exit" << endl;
-	RMTask.close();
-
-	ShellExecute(0, "open", filename.c_str(), 0, 0, SW_HIDE);
-	return filename;
+//文件夹操作 rm 删除 md 创建 clear 清理
+void clearfolder(string foldername) {
+	string cmdsa = "rd /s /q \"" + foldername + "\"";
+	system(cmdsa.c_str());
+	CreateDirectory(foldername.c_str(),0);
+	return;
 }
 
 //Read info
@@ -277,7 +344,7 @@ string ReadText(string filename, int line)
 	}
 	ifstream fin;
 	fin.open(filename, ios::in);
-	string strVec[6400];
+	string strVec[65535];
 	int i = 0;
 	while (!fin.eof())
 	{
@@ -291,8 +358,9 @@ string ReadText(string filename, int line)
 
 //获取网络txt格式的文件内容
 string geturlcode(string url) {
-	URLDown(url, "guc~temp.txt");
-	string charr = "guc~temp.txt";
+	string b = getenv("temp");
+	string charr = b + "\\guc~temp.txt";
+	URLDown(url, charr);
 	bool retGUC = existcheck(charr);
 	if (retGUC) {
 		ifstream ReadAPI;
@@ -314,7 +382,7 @@ string geturlcode(string url) {
 //获取程序完整的运行目录加文件
 string getselfinfo() {
 	errno_t	err = 0;
-	char	fileName[100] = { 0 };
+	char	fileName[65535] = { 0 };
 	char    ProcessFullName[_MAX_PATH] = { 0 };
 	char    ProcessName[0x40] = { 0 };
 	DWORD   ProcessPID = 0;
@@ -377,6 +445,54 @@ string getsysarch() {
 	}
 }
 
+int CountLines(string filename)
+{
+	ifstream ReadFile;
+	int n = 0;
+	string tmp;
+	ReadFile.open(filename.c_str());//ios::in 表示以只读的方式读取文件
+	if (ReadFile.fail())//文件打开失败:返回0
+	{
+		return 0;
+	}
+	else//文件存在
+	{
+		while (getline(ReadFile, tmp, '\n'))
+		{
+			n++;
+		}
+		ReadFile.close();
+		return n;
+	}
+}
+
+string ALineReader(string File, int line_number) {
+	int lines, i = 0;
+	string temp;
+	fstream file;
+	file.open(File.c_str());
+	lines = CountLines(File);
+
+	if (line_number <= 0)
+	{
+		return "Line Error";
+	}
+	if (file.fail())
+	{
+		return "Error File not exist";
+	}
+	if (line_number > lines)
+	{
+		return "overline";
+	}
+	while (getline(file, temp) && i < line_number - 1)
+	{
+		i++;
+	}
+	file.close();
+	return temp;
+}
+
 //获取windows变量 (存在250毫秒0.25秒的延迟，如果有需求可以使用 getenv代替）)
 string getwinenv(string varname) {
 	ofstream OutCodeSC;
@@ -389,14 +505,11 @@ string getwinenv(string varname) {
 	ShellExecute(0, "open", "sc.bat", 0, 0, SW_HIDE);
 	Sleep(250);
 	ifstream GetVarfile;
-	string ReturnVar;
-	GetVarfile.open("varout.txt");
-	GetVarfile >> ReturnVar;
-	GetVarfile.close();
+	string RETd =ALineReader("varout.txt", 1);
 	remove("sc.bat");
 	remove("varout.txt");
 
-	return ReturnVar;
+	return RETd;
 }
 
 //用getenv的版本
@@ -405,8 +518,25 @@ string getwinenvfast(string varname) {
 	return retcode;
 }
 
-//检查一段句子中是否存在指定的字符
-int checkChar(string text, char* c) {
+//使用系统API获取环境变量
+string getwinenvapi(string varname) {
+
+	char buffer[65535];
+	DWORD ret;
+	ret = GetEnvironmentVariable(varname.c_str(), buffer, 32767);
+
+	string back = buffer;
+	if (back == "") {
+		string cur_str = to_string(long long(GetLastError()));
+		return cur_str;
+	}
+	return back;
+}
+
+//检查一段句子中是否存在指定的字符存在返回 没有返回0，有返回1
+int checkChar(string text,string chechchar ) {
+	const char* c = chechchar.c_str();
+
 	if (text.find(c) != string::npos) {
 		return 1;
 	}
@@ -415,9 +545,57 @@ int checkChar(string text, char* c) {
 	}
 }
 
-//替换句子里面的单词
+
+//切割字符串。lines为内容，cutmark为标记，line为位数
+
+string cutlineblockA(string lines, string cutmark, int line) {
+	string backapi;
+	char* readcut = NULL;
+
+	char Texts[65535] = "a";
+	char CUMark[65535] = "a";
+
+	strcpy_s(Texts, lines.c_str());
+	strcpy_s(CUMark, cutmark.c_str());
+
+	// 分割字符串，返回分割后的子字符串
+	int cutrecord = 1;
+	char* token = strtok_s(Texts, CUMark, &readcut);
+	if (token == NULL) {
+		backapi = "";
+		return backapi;
+	}
+
+	if (cutrecord == line) {
+
+		//cout << "CUTLINEBLOCK CHECK OK, RETURN :  _" << token << "_" << endl;
+		backapi = token;
+		return backapi;
+	}
+
+NextRollCR:
+	if (cutrecord == line) {
+		//cout << "CUTLINEBLOCK CHECK OK, RETURN :  _" << token << "_" << endl;
+		backapi = token;
+		return backapi;
+	}
+	if (token == NULL) {
+		backapi = "";
+		return backapi;
+	}
+	cutrecord++;
+	token = strtok_s(NULL, CUMark, &readcut);
+	goto NextRollCR;
+}
+
+string cutlineblock(string lines, int line) {
+	return cutlineblockA(lines, " ", line);
+}
+
+//替换句子里面的单词 最高可容纳 65535个字符
 string Replace(string& info, const string& replaceword, const string& nword) {
-	char repinfo[20];
+	//cout << "New Replace :  _" << info << "_  _" << replaceword << "_  _" << nword << "_" << endl;
+	char repinfo[65535];
 	strcpy(repinfo, replaceword.c_str());
 	int checkanti = checkChar(info, repinfo);
 	if (checkanti == 1) {
@@ -425,19 +603,47 @@ string Replace(string& info, const string& replaceword, const string& nword) {
 		std::string::size_type pos = 0;
 		while ((pos = dst_str.find(replaceword)) != std::string::npos)   //替换所有指定子串
 		{
-			dst_str.replace(pos, replaceword.length(), nword);
+			dst_str=dst_str.replace(pos, replaceword.length(), nword);
+			if (pos > 2000) {
+				MessageBox(0, "Replace API is timeout", "Error", MB_ICONERROR | MB_OK);
+				return "replaceError";
+			}
 		}
+		//cout << "Return Data :  _" << dst_str <<"_" << endl;
 		return dst_str;
 	}
 	else {
+		//cout << "Return Data :  _" << info << "_" << endl;
 		return info;
 	}
 }
 
-//创建随机数
+//创建随机数 (最大2147483647 最小-2147483647 ,由于部分bug存在，已停止异常数值检查)
 int SpawnRandomNum(int min, int max) {
+
+	string minb, maxb;
+	minb = to_string(min);
+	maxb = to_string(max);
+
+	//string chars = "Min :  " + minb + "   Max :   " + maxb + "  Bug Report";
+	//MessageBox(0, chars.c_str(), "MXBug Report", MB_OK);
+
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> dis(min, max); // 生成1-10之间的随机整数
+	std::uniform_int_distribution<> dis(min, max); // 生成i-a之间的随机整数
+	int outdata = dis(gen);
+	
+	//string dis_str = to_string(dis(gen));
+	//MessageBox(0,dis_str.c_str(),"Bug check",MB_OK);
+	
 	return dis(gen);
 }
+
+//执行Pause，输出对应信息
+void cpause(string Notices) {
+	cout << Notices;
+	system("pause >nul");
+	cout << endl;
+	return;
+}
+
